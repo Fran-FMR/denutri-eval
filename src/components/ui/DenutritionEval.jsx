@@ -5,311 +5,260 @@ const DenutritionEval = () => {
     poidsActuel: '',
     poidsHabituel: '',
     taille: '',
-    alimentation: 'tout',
+    albuminemie: '',
+    antecedentsDenutrition: false,
+    typeConsommateur: 'tout',
+    profilConsommateur: 'tout',
     caracteristiquesMedicales: [],
     caracteristiquesPhysiques: [],
-    albuminemie: '',
-    antecedentsDenutrition: false
+    rythmePrise: 'normale'
   });
 
   const [resultats, setResultats] = useState(null);
 
+  // Codes couleur pour la sévérité de dénutrition
+  const severiteColors = {
+    faible: 'bg-green-500 text-white',
+    modere: 'bg-yellow-500 text-black',
+    severe: 'bg-red-500 text-white'
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setData(prevData => ({
+      ...prevData,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleCheckboxChange = (field, value) => {
+    setData(prevData => {
+      const currentValues = prevData[field];
+      const newValues = currentValues.includes(value)
+        ? currentValues.filter(item => item !== value)
+        : [...currentValues, value];
+      return { ...prevData, [field]: newValues };
+    });
+  };
+
   const evaluer = () => {
-    // Calculs de base
-    const taille = data.taille / 100;
-    const imc = (data.poidsActuel / (taille * taille)).toFixed(1);
-    const pertePoids = ((data.poidsHabituel - data.poidsActuel) / data.poidsHabituel * 100).toFixed(1);
+    // Conversion des valeurs en nombres
+    const taille = parseFloat(data.taille) / 100;
+    const poidsActuel = parseFloat(data.poidsActuel);
+    const poidsHabituel = parseFloat(data.poidsHabituel);
     
-    // Évaluation des risques
+    // Calcul de l'IMC et perte de poids
+    const imc = (poidsActuel / (taille * taille)).toFixed(1);
+    const pertePoids = ((poidsHabituel - poidsActuel) / poidsHabituel * 100).toFixed(1);
+    
+    // Initialisation des variables d'évaluation
     let facteurs = 0;
     let pointsVigilance = [];
-    let niveau = 'normal';
+    let niveau = 'faible';
+    let recommendations = [];
+    let actionsPrioritaires = [];
 
-    // Critères phénotypiques
-    if (imc < 21) facteurs++;
-    if (pertePoids > 5) facteurs++;
-
-    // Critères alimentaires
-    if (data.alimentation === 'deux_tiers') facteurs++;
-    if (data.alimentation === 'moitie') facteurs += 2;
-
-    // Points de vigilance basés sur les caractéristiques
-    if (data.caracteristiquesMedicales.includes('neurodegenerative')) {
-      facteurs++;
-      pointsVigilance.push("Surveillance accrue : Maladie neurodégénérative");
-    }
-    if (data.caracteristiquesMedicales.includes('polymedication')) {
-      facteurs++;
-      pointsVigilance.push("Surveillance des interactions médicamenteuses");
-    }
-    if (data.caracteristiquesMedicales.includes('troubles_comportement')) {
-      facteurs++;
-      pointsVigilance.push("Suivi comportemental alimentaire requis");
+    // Détermination du niveau de sévérité
+    if (parseFloat(imc) < 18 || parseFloat(pertePoids) > 10) {
+      niveau = 'severe';
+    } else if (parseFloat(imc) < 21 || parseFloat(pertePoids) > 5) {
+      niveau = 'modere';
     }
 
-    if (data.caracteristiquesPhysiques.includes('fatigabilite')) {
-      facteurs++;
-      pointsVigilance.push("Adapter les temps de repas - Risque de fatigabilité");
-    }
-    if (data.caracteristiquesPhysiques.includes('manque_force')) {
-      facteurs++;
-      pointsVigilance.push("Aide au repas nécessaire - Manque de force");
-    }
-    if (data.caracteristiquesPhysiques.includes('problemes_moteurs')) {
-      facteurs++;
-      pointsVigilance.push("Adaptation des textures - Problèmes de coordination");
+    // Calcul des facteurs de risque
+    if (data.caracteristiquesMedicales.length > 2) {
+      facteurs += 3;
+    } else if (data.caracteristiquesMedicales.length > 0) {
+      facteurs += 2;
     }
 
-    // Détermination du niveau de risque
-    if (facteurs >= 2 && facteurs < 4) niveau = 'modere';
-    if (facteurs >= 4 || imc < 18 || pertePoids > 10) niveau = 'severe';
+    data.caracteristiquesMedicales.forEach(carac => {
+      pointsVigilance.push(`Caractéristique médicale : ${carac}`);
+    });
 
+    data.caracteristiquesPhysiques.forEach(carac => {
+      facteurs++;
+      pointsVigilance.push(`Caractéristique physique : ${carac}`);
+    });
+
+    // Recommandations et actions prioritaires
+    recommendations = [
+      "Utiliser la fiche d'évaluation du profil de mangeur",
+      "Utiliser la fiche d'évaluation du comportement alimentaire",
+      "Évaluer l'environnement des repas"
+    ];
+
+    if (niveau === 'modere') {
+      actionsPrioritaires = [
+        "Enrichissement naturel des plats appréciés",
+        "Surveillance alimentaire rapprochée sur 3 jours"
+      ];
+    } else if (niveau === 'severe') {
+      actionsPrioritaires = [
+        "Consultation médicale urgente",
+        "Enrichissement des plats et prescription de compléments nutritionnels oraux (CNO)",
+        "Suivi quotidien de l'alimentation"
+      ];
+    }
+
+    // Mise à jour des résultats
     setResultats({
       imc,
       pertePoids,
       niveau,
       facteurs,
-      pointsVigilance
+      pointsVigilance,
+      recommendations,
+      actionsPrioritaires,
+      severiteColor: severiteColors[niveau]
     });
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6 my-8">
-      <h2 className="text-2xl font-bold mb-6">Évaluation du Risque de Dénutrition</h2>
+    <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
+      <h2 className="text-2xl font-bold mb-6 text-center text-blue-600">
+        Évaluation du Risque de Dénutrition
+      </h2>
       
-      {/* Formulaire de saisie */}
-      <div className="space-y-6">
+      <form className="space-y-6">
+        {/* Formulaire de saisie des données */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block mb-2 font-medium">Poids actuel (kg)</label>
             <input
               type="number"
-              className="w-full p-2 border rounded"
+              name="poidsActuel"
               value={data.poidsActuel}
-              onChange={(e) => setData({...data, poidsActuel: e.target.value})}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-300"
             />
           </div>
           <div>
             <label className="block mb-2 font-medium">Poids habituel (kg)</label>
             <input
               type="number"
-              className="w-full p-2 border rounded"
+              name="poidsHabituel"
               value={data.poidsHabituel}
-              onChange={(e) => setData({...data, poidsHabituel: e.target.value})}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-300"
             />
           </div>
-        </div>
-
-        <div>
-          <label className="block mb-2 font-medium">Taille (cm)</label>
-          <input
-            type="number"
-            className="w-full p-2 border rounded"
-            value={data.taille}
-            onChange={(e) => setData({...data, taille: e.target.value})}
-          />
-        </div>
-
-        <div>
-          <label className="block mb-2 font-medium">Albuminémie (g/L) - Optionnel</label>
-          <input
-            type="number"
-            className="w-full p-2 border rounded"
-            value={data.albuminemie}
-            onChange={(e) => setData({...data, albuminemie: e.target.value})}
-          />
-        </div>
-
-        <div>
-          <label className="flex items-center space-x-2">
+          <div>
+            <label className="block mb-2 font-medium">Taille (cm)</label>
             <input
-              type="checkbox"
-              checked={data.antecedentsDenutrition}
-              onChange={(e) => setData({...data, antecedentsDenutrition: e.target.checked})}
-              className="rounded"
+              type="number"
+              name="taille"
+              value={data.taille}
+              onChange={handleInputChange}
+              className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-300"
             />
-            <span>Antécédents de dénutrition</span>
-          </label>
-        </div>
-
-        <div>
-          <label className="block mb-2 font-medium">Comportement alimentaire</label>
-          <select
-            className="w-full p-2 border rounded"
-            value={data.alimentation}
-            onChange={(e) => setData({...data, alimentation: e.target.value})}
-          >
-            <option value="tout">Mange tout</option>
-            <option value="deux_tiers">Mange les 2/3</option>
-            <option value="moitie">Mange moins de la moitié</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block mb-2 font-medium">Caractéristiques médicales</label>
-          <div className="space-y-2">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                className="mr-2"
-                checked={data.caracteristiquesMedicales.includes('neurodegenerative')}
-                onChange={(e) => {
-                  const newValue = e.target.checked
-                    ? [...data.caracteristiquesMedicales, 'neurodegenerative']
-                    : data.caracteristiquesMedicales.filter(c => c !== 'neurodegenerative');
-                  setData({...data, caracteristiquesMedicales: newValue});
-                }}
-              />
-              Maladie neurodégénérative
-            </label>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                className="mr-2"
-                checked={data.caracteristiquesMedicales.includes('polymedication')}
-                onChange={(e) => {
-                  const newValue = e.target.checked
-                    ? [...data.caracteristiquesMedicales, 'polymedication']
-                    : data.caracteristiquesMedicales.filter(c => c !== 'polymedication');
-                  setData({...data, caracteristiquesMedicales: newValue});
-                }}
-              />
-              Polymédication
-            </label>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                className="mr-2"
-                checked={data.caracteristiquesMedicales.includes('troubles_comportement')}
-                onChange={(e) => {
-                  const newValue = e.target.checked
-                    ? [...data.caracteristiquesMedicales, 'troubles_comportement']
-                    : data.caracteristiquesMedicales.filter(c => c !== 'troubles_comportement');
-                  setData({...data, caracteristiquesMedicales: newValue});
-                }}
-              />
-              Troubles du comportement alimentaire
-            </label>
           </div>
         </div>
 
-        <div>
-          <label className="block mb-2 font-medium">Caractéristiques physiques</label>
-          <div className="space-y-2">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                className="mr-2"
-                checked={data.caracteristiquesPhysiques.includes('fatigabilite')}
-                onChange={(e) => {
-                  const newValue = e.target.checked
-                    ? [...data.caracteristiquesPhysiques, 'fatigabilite']
-                    : data.caracteristiquesPhysiques.filter(c => c !== 'fatigabilite');
-                  setData({...data, caracteristiquesPhysiques: newValue});
-                }}
-              />
-              Fatigabilité
-            </label>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                className="mr-2"
-                checked={data.caracteristiquesPhysiques.includes('manque_force')}
-                onChange={(e) => {
-                  const newValue = e.target.checked
-                    ? [...data.caracteristiquesPhysiques, 'manque_force']
-                    : data.caracteristiquesPhysiques.filter(c => c !== 'manque_force');
-                  setData({...data, caracteristiquesPhysiques: newValue});
-                }}
-              />
-              Manque de force et de tonus
-            </label>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                className="mr-2"
-                checked={data.caracteristiquesPhysiques.includes('problemes_moteurs')}
-                onChange={(e) => {
-                  const newValue = e.target.checked
-                    ? [...data.caracteristiquesPhysiques, 'problemes_moteurs']
-                    : data.caracteristiquesPhysiques.filter(c => c !== 'problemes_moteurs');
-                  setData({...data, caracteristiquesPhysiques: newValue});
-                }}
-              />
-              Problèmes moteurs et de coordination
-            </label>
+        {/* Caractéristiques médicales et physiques */}
+        <div className="space-y-4">
+          <div>
+            <label className="block mb-2 font-medium">Caractéristiques médicales</label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {['neurodegenerative', 'polymedication', 'troubles_comportement', 'insuffisance_renale', 
+                'cancer', 'maladie_inflammatoire', 'depression'].map(carac => (
+                <label key={carac} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={data.caracteristiquesMedicales.includes(carac)}
+                    onChange={() => handleCheckboxChange('caracteristiquesMedicales', carac)}
+                    className="mr-2"
+                  />
+                  {carac.replace('_', ' ')}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block mb-2 font-medium">Caractéristiques physiques</label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {['fatigabilite', 'manque_force', 'troubles_moteurs', 'perte_appetit', 
+                'troubles_mastication', 'troubles_deglutition', 'troubles_sensoriels'].map(carac => (
+                <label key={carac} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={data.caracteristiquesPhysiques.includes(carac)}
+                    onChange={() => handleCheckboxChange('caracteristiquesPhysiques', carac)}
+                    className="mr-2"
+                  />
+                  {carac.replace('_', ' ')}
+                </label>
+              ))}
+            </div>
           </div>
         </div>
 
+        {/* Bouton d'évaluation */}
         <button
-          className="w-full p-3 bg-blue-600 text-white rounded hover:bg-blue-700"
+          type="button"
           onClick={evaluer}
+          className="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition duration-300 ease-in-out text-lg font-semibold"
         >
-          Évaluer
+          Évaluer le Risque de Dénutrition
         </button>
+      </form>
 
-        {/* Affichage des résultats */}
-        {resultats && (
-          <div className="mt-6 space-y-4">
-            <div className="p-4 bg-white rounded-lg shadow-sm">
-              <div className="font-medium mb-2">Indicateurs :</div>
-              <div className="space-y-3">
-                <div>• IMC : {resultats.imc} kg/m²</div>
-                <div>• Perte de poids : {resultats.pertePoids}%</div>
-                {data.albuminemie && <div>• Albuminémie : {data.albuminemie} g/L</div>}
-                <div>• Échelle de risque : {resultats.facteurs}/6</div>
-                
-                {/* Nouveau bloc d'affichage du niveau de risque */}
-                <div className="mt-3 p-4 rounded-lg flex items-center gap-3" style={{
-                  backgroundColor: resultats.niveau === 'severe' ? '#FEE2E2' :
-                                 resultats.niveau === 'modere' ? '#FFEDD5' :
-                                 '#FEF9C3'  // Fond jaune clair pour le niveau faible
-                }}>
-                  {/* Icône indicatrice */}
-                  <span className="text-2xl">
-                    {resultats.niveau === 'severe' ? '🔴' :
-                     resultats.niveau === 'modere' ? '🟠' :
-                     '🟡'}  {/* Point jaune pour le niveau faible */}
-                  </span>
-                  
-                  {/* Texte du niveau */}
-                  <span className="font-bold" style={{
-                    color: resultats.niveau === 'severe' ? '#991B1B' :
-                           resultats.niveau === 'modere' ? '#9A3412' :
-                           '#854D0E'  // Texte jaune foncé pour le niveau faible
-                  }}>
-                    Niveau de risque : {' '}
-                    {resultats.niveau === 'severe' ? 'SÉVÈRE' :
-                     resultats.niveau === 'modere' ? 'MODÉRÉ' :
-                     'FAIBLE'}
-                  </span>
-                </div>
-              </div>
+      {/* Résultats */}
+      {resultats && (
+        <div className="mt-8 space-y-6 bg-gray-50 p-6 rounded-lg">
+          <h3 className="text-2xl font-bold text-center text-blue-700">
+            Résultats de l'Évaluation
+          </h3>
+
+          {/* Synthèse du risque */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white p-4 rounded-lg shadow">
+              <h4 className="font-semibold mb-2">Données Anthropométriques</h4>
+              <p>IMC : {resultats.imc} kg/m²</p>
+              <p>Perte de poids : {resultats.pertePoids}%</p>
             </div>
 
-            {/* Recommandations et suivi */}
-            {(resultats.niveau === 'severe' || resultats.niveau === 'modere') && (
-              <>
-                <div className="p-4 bg-red-50 rounded-lg shadow-sm">
-                  <div className="font-bold text-red-700 mb-2">Niveau de criticité et surveillance :</div>
-                  <div className="space-y-2">
-                    {resultats.niveau === 'severe' ? (
-                      <div className="font-medium">⚠️ SUIVI PRIORITAIRE - Surveillance quotidienne requise</div>
-                    ) : (
-                      <div className="font-medium">⚡ Surveillance rapprochée nécessaire</div>
-                    )}
-                    <div className="pl-4">
-                      <div>• Mettre en place la surveillance alimentaire sur 3 jours</div>
-                      <div>• Utiliser l'outil "Profil de mangeur" pour évaluer le comportement alimentaire</div>
-                      <div>• Réévaluation dans {resultats.niveau === 'severe' ? '15 jours' : '1 mois'}</div>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
+            <div className="bg-white p-4 rounded-lg shadow">
+              <h4 className="font-semibold mb-2">Niveau de Risque</h4>
+              <p className={`inline-block px-3 py-1 rounded ${resultats.severiteColor}`}>
+                {resultats.niveau.toUpperCase()}
+              </p>
+              <p>Facteurs de risque : {resultats.facteurs}</p>
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* Points de vigilance */}
+          <div className="bg-blue-100 p-4 rounded-lg">
+            <h4 className="font-semibold mb-2 text-blue-800">Points de Vigilance</h4>
+            <ul className="list-disc list-inside">
+              {resultats.pointsVigilance.map((point, index) => (
+                <li key={index}>{point}</li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Recommandations */}
+          <div className="bg-green-100 p-4 rounded-lg">
+            <h4 className="font-semibold mb-2 text-green-800">Recommandations</h4>
+            <ul className="list-disc list-inside">
+              {resultats.recommendations.map((rec, index) => (
+                <li key={index}>{rec}</li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Actions prioritaires */}
+          <div className="bg-red-100 p-4 rounded-lg">
+            <h4 className="font-semibold mb-2 text-red-800">Actions Prioritaires</h4>
+            <ul className="list-disc list-inside">
+              {resultats.actionsPrioritaires.map((action, index) => (
+                <li key={index}>{action}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
