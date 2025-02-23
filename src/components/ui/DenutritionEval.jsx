@@ -160,7 +160,7 @@ const DenutritionEval = () => {
           <div>
             <label className="block mb-2 font-medium">Caractéristiques médicales</label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {['neurodegenerative', 'polymedication', 'troubles_comportement', 'insuffisance_renale', 
+              {['maladie_neurodegenerative', 'polymedication', 'troubles_comportement', 'insuffisance_renale', 
                 'cancer', 'maladie_inflammatoire', 'depression'].map(carac => (
                 <label key={carac} className="flex items-center">
                   <input
@@ -169,7 +169,7 @@ const DenutritionEval = () => {
                     onChange={() => handleCheckboxChange('caracteristiquesMedicales', carac)}
                     className="mr-2"
                   />
-                  {carac.replace('_', ' ')}
+                  {carac === 'maladie_neurodegenerative' ? 'Maladie neurodégénérative' : carac.replace('_', ' ')}
                 </label>
               ))}
             </div>
